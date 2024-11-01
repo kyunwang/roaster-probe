@@ -3,6 +3,7 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+.DS_Store
 
 # Ignored due to secrets - 1:1 to .example variants where you have to fill in the secrets yourselves
 platformio.ini
