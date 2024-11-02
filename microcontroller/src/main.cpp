@@ -4,14 +4,13 @@
 #include <ESP8266WiFi.h>
 #endif
 
-#include <Arduino.h>
-#include "max6675.h"
 #include <ArduinoJson.h>
-
 #include <ArduinoWebsockets.h>
+#include "max6675.h"
 
-// Internal
 using namespace websockets;
+
+WebsocketsClient client;
 
 void onMessageCallback(WebsocketsMessage message) {
 	Serial.print("Got Message: ");
@@ -33,31 +32,19 @@ void onEventsCallback(WebsocketsEvent event, String data) {
 	}
 }
 
-WebsocketsClient client;
 
+// NodeMCU ESP32 pins
 int thermoSO = 12; // D6
 int thermoCS = 15; // D8
 int thermoCLK = 14; // D5
 
 MAX6675 thermocouple(thermoCLK, thermoCS, thermoSO);
 
-// Wifi init
-WiFiClient wifiClient;
-
-
 JsonDocument inputDoc;
 JsonDocument outputDoc;
 std::string outputMessage;
 
 // ====
-
-const char* subscriptionTopics[] = {
-  "+/+/dummyData"
-};
-
-// enum class PublishTopics : char {
-//   BeanTemp = 'probe/output/bean_temperature'
-// };
 
 #define USE_SERIAL Serial
 
@@ -83,23 +70,22 @@ connect_host:
 
 	Serial.println("Connecting to server");
 
-	// Connect to server
-	// if (!client.connect(MQTT_SERVER, MQTT_PORT, "/probe")) {
-	// 	delay(1000);
+	// Connect to WS server
+	if (!client.connect(SOCKET_SERVER, SOCKET_PORT, "/artisan")) {
+		delay(1000);
 
-	// 	if (WiFi.status() != WL_CONNECTED) {
-	// 		Serial.println("Wifi disconnected");
-	// 		goto connect_wifi;
-	// 	}
+		if (WiFi.status() != WL_CONNECTED) {
+			Serial.println("Wifi disconnected");
+			goto connect_wifi;
+		}
 
-	// 	goto connect_host;
-	// }
+		goto connect_host;
+	}
 
 	Serial.println();
 	Serial.println();
 
 	// Send a message
-
 	outputDoc.clear();
 	outputDoc["command"] = "message";
 	outputDoc["message"] = "Connected Ping";
@@ -113,7 +99,6 @@ connect_host:
 
 
 // =====  Loop + Setup below
-
 void setup() {
 	Serial.begin(9600);
 
@@ -123,14 +108,8 @@ void setup() {
 		delay(1000);
 	}
 
-	// Connect to wifi & host
+	// Connect to wifi & WS host
 	connect();
-
-	Serial.println("Max6675 testing");
-
-	// Serial.println(MQTT_SERVER);
-	// Serial.println(MQTT_PORT);
-
 	Serial.println("connected!");
 
 	// Giving some additional time to initialise the MAX6675
@@ -142,6 +121,8 @@ void loop() {
 		Serial.println("Disconnected - Attempting to reconnect");
 		connect();
 		delay(1000);
+
+		return;
 	}
 
 	client.poll();
@@ -149,11 +130,11 @@ void loop() {
 	Serial.print("C = ");
 	Serial.println(thermocouple.readCelsius());
 
-	// JsonDocument outDoc
+	// Prepare probe data
 	outputDoc.clear();
 	outputDoc["command"] = "setData";
-	outputDoc["BT"] = thermocouple.readCelsius();
-	// outputDoc["ET"] = thermocouple.readCelsius();
+	outputDoc["data"]["BT"] = thermocouple.readCelsius();
+
 	char buffer[256];
 	serializeJson(outputDoc, buffer);
 	client.send(buffer);
