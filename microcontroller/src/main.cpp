@@ -46,8 +46,6 @@ std::string outputMessage;
 
 // ====
 
-#define USE_SERIAL Serial
-
 void connect() {
 connect_wifi:
 	Serial.println("Connecting to WiFi");
@@ -103,8 +101,8 @@ void setup() {
 	Serial.begin(9600);
 
 	for (uint8_t t = 4; t > 0; t--) {
-		USE_SERIAL.printf("[SETUP] BOOT WAIT %d...\n", t);
-		USE_SERIAL.flush();
+		Serial.printf("[SETUP] BOOT WAIT %d...\n", t);
+		Serial.flush();
 		delay(1000);
 	}
 
